@@ -95,5 +95,6 @@ mod tests {
         test_leb128_plus(0xFF, &[0xFF, 0]);
         test_leb128_plus(0x17F, &[0xFF, 1]);
         test_leb128_plus(0x407F, &[0xFF, 0x7F]);
+        test_leb128_plus(0x4080, &[0x80, 0x80, 0x00]);
     }
 }
