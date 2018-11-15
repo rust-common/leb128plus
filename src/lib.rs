@@ -1,65 +1,92 @@
-pub fn from(get: &mut FnMut() -> u8) -> u64 {
+use std::io::Read;
+use std::io::Result;
+use std::io::Write;
+
+/// Read `u64` from LEB128+ format.
+///
+/// Examples
+///
+/// ```
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[0])).unwrap(), 0);
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[127])).unwrap(), 127);
+/// assert!(match leb128plus::read(&mut std::io::Cursor::new(&[128])) {
+///     Result::Err(_) => true,
+///     _ => false
+/// });
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[128, 0])).unwrap(), 128);
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[0xFF, 0])).unwrap(), 0xFF);
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[0xFF, 1])).unwrap(), 0x17F);
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[0xFF, 0x7F])).unwrap(), 0x407F);
+/// assert_eq!(leb128plus::read(&mut std::io::Cursor::new(&[0x80, 0x80, 0x00])).unwrap(), 0x4080);
+/// ```
+pub fn read(r: &mut Read) -> Result<u64> {
     let mut result = 0;
     let mut shift = 0;
     loop {
-        let v = get();
-        result += (v as u64) << shift;
-        if v < 128 {
-            return result;
+        let mut v = [0];
+        r.read_exact(&mut v)?;
+        result += (v[0] as u64) << shift;
+        if v[0] < 128 {
+            break Ok(result);
         }
         shift += 7;
     }
 }
 
-pub fn to(mut v: u64, write: &mut FnMut(u8)) {
+/// Write `u64` in LEB128+ format.
+///
+/// Examples
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 0);
+/// assert_eq!(v, [0]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 127);
+/// assert_eq!(v, [127]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 128);
+/// assert_eq!(v, [128, 0]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 0xFF);
+/// assert_eq!(v, [0xFF, 0]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 0x17F);
+/// assert_eq!(v, [0xFF, 1]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 0x407F);
+/// assert_eq!(v, [0xFF, 0x7F]);
+/// ```
+///
+/// ```
+/// let mut v = vec![];
+/// leb128plus::write(&mut std::io::Cursor::new(&mut v), 0x4080);
+/// assert_eq!(v, [0x80, 0x80, 0x00]);
+/// ```
+pub fn write(w: &mut Write, mut v: u64) -> Result<()> {
     loop {
         let x = v as u8;
         v = v >> 7;
         if v == 0 {
-            write(x);
-            break;
+            w.write(&[x])?;
+            break Ok(());
         }
-        write(0x80 | x);
+        w.write(&[0x80 | x])?;
         v = v - 1;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn test_leb128_plus(value: u64, values: &[u8]) {
-        {
-            let mut i = 0;
-            to(
-                value,
-                &mut |q| {
-                    assert_eq!(q, values[i]);
-                    i = i + 1;
-                }
-            );
-            assert_eq!(i, values.len())
-        }
-        {
-            let mut i = 0;
-            let result = from(&mut || {
-                let q = values[i];
-                i = i + 1;
-                return q;
-            });
-            assert_eq!(result, value);
-            assert_eq!(i, values.len());
-        }
-    }
-
-    #[test]
-    fn leb128_plus() {
-        test_leb128_plus(0, &[0]);
-        test_leb128_plus(127, &[127]);
-        test_leb128_plus(128, &[128, 0]);
-        test_leb128_plus(0xFF, &[0xFF, 0]);
-        test_leb128_plus(0x17F, &[0xFF, 1]);
-        test_leb128_plus(0x407F, &[0xFF, 0x7F]);
-        test_leb128_plus(0x4080, &[0x80, 0x80, 0x00]);
     }
 }
