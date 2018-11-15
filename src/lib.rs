@@ -1,5 +1,4 @@
-pub fn from<F>(get: &mut F) -> u64 
-where F: FnMut() -> u8 {
+pub fn from(get: &mut FnMut() -> u8) -> u64 {
     let mut result = 0;
     let mut shift = 0;
     loop {
@@ -12,10 +11,9 @@ where F: FnMut() -> u8 {
     }
 }
 
-pub fn to<F>(mut v: u64, write: &mut F)
-where F: FnMut(u8) {
+pub fn to(mut v: u64, write: &mut FnMut(u8)) {
     loop {
-        let x = v as u8;      
+        let x = v as u8;
         v = v >> 7;
         if v == 0 {
             write(x);
