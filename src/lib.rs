@@ -7,7 +7,7 @@ pub trait Write {
 /// ## Examples
 ///
 /// ```
-/// let mut f = || -> std::io::Result<()> {
+/// let f = || -> std::io::Result<Vec<u8>> {
 ///     let mut v = vec![];
 ///     use leb128plus::Write;
 ///     std::io::Cursor::new(&mut v)
@@ -18,7 +18,11 @@ pub trait Write {
 ///         .write(0x17F)?
 ///         .write(0x407F)?
 ///         .write(0x4080)?;
-///     assert_eq!(v, [
+///     Ok(v)
+/// };
+/// assert_eq!(
+///     f().unwrap(),
+///     [
 ///         0,
 ///         127,
 ///         128, 0,
@@ -26,10 +30,8 @@ pub trait Write {
 ///         0xFF, 1,
 ///         0xFF, 0x7F,
 ///         0x80, 0x80, 0x00
-///     ]);
-///     Ok(())
-/// };
-/// f().unwrap();
+///     ]
+/// );
 /// ```
 impl<T: std::io::Write> Write for T {
     fn write(&mut self, mut v: u64) -> std::io::Result<&mut Self> {
