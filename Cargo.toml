@@ -2,5 +2,8 @@
 name = "leb128plus"
 version = "0.2.0"
 authors = ["Sergey Shandar"]
+description = "LEB128+"
+license = "Apache-2.0"
+repository = "https://github.com/rust-common/leb128plus"
 
 [dependencies]
