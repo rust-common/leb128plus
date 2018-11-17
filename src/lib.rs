@@ -9,17 +9,15 @@ pub trait Write {
 /// ```
 /// let mut f = || -> std::io::Result<()> {
 ///     let mut v = vec![];
-///     {
-///         use leb128plus::Write;
-///         let mut c = std::io::Cursor::new(&mut v);
-///         c.write(0)?
-///             .write(127)?
-///             .write(128)?
-///             .write(0xFF)?
-///             .write(0x17F)?
-///             .write(0x407F)?
-///             .write(0x4080)?;
-///     }
+///     use leb128plus::Write;
+///     std::io::Cursor::new(&mut v)
+///         .write(0)?
+///         .write(127)?
+///         .write(128)?
+///         .write(0xFF)?
+///         .write(0x17F)?
+///         .write(0x407F)?
+///         .write(0x4080)?;
 ///     assert_eq!(v, [
 ///         0,
 ///         127,
@@ -93,44 +91,5 @@ impl<T: std::io::Read> Read for T {
             }
             shift += 7;
         }
-    }
-}
-
-/// Write `u64` in the LEB128+ format.
-///
-/// Examples
-///
-/// ```
-/// let mut v = vec![];
-/// {
-///     let mut c = std::io::Cursor::new(&mut v);
-///     leb128plus::write(&mut c, 0);
-///     leb128plus::write(&mut c, 127);
-///     leb128plus::write(&mut c, 128);
-///     leb128plus::write(&mut c, 0xFF);
-///     leb128plus::write(&mut c, 0x17F);
-///     leb128plus::write(&mut c, 0x407F);
-///     leb128plus::write(&mut c, 0x4080);
-/// }
-/// assert_eq!(v, [
-///     0,
-///     127,
-///     128, 0,
-///     0xFF, 0,
-///     0xFF, 1,
-///     0xFF, 0x7F,
-///     0x80, 0x80, 0x00
-/// ]);
-/// ```
-pub fn write(w: &mut std::io::Write, mut v: u64) -> std::io::Result<()> {
-    loop {
-        let x = v as u8;
-        v = v >> 7;
-        if v == 0 {
-            w.write(&[x])?;
-            break Ok(());
-        }
-        w.write(&[0x80 | x])?;
-        v = v - 1;
     }
 }
