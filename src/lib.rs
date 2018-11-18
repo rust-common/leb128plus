@@ -41,7 +41,7 @@ pub trait Write {
         where V: UInt, u8: AsPrimitive<V>;
 }
 
-/// Write unsigned integer in the LEB128+ format to `std::io::Write` stream.
+/// Write the given unsigned integer in the LEB128+ format to `std::io::Write` stream.
 ///
 /// ## Examples
 ///
@@ -94,7 +94,7 @@ pub trait Read {
         where V: UInt, u8: num_traits::cast::AsPrimitive<V>;
 }
 
-/// Read `u64` in the LEB128+ format from `std::io::Read` stream.
+/// Read an unsigned integer in the LEB128+ format from `std::io::Read` stream.
 ///
 /// ## Example
 ///
