@@ -7,4 +7,5 @@ license = "Apache-2.0"
 repository = "https://github.com/rust-common/leb128plus"
 
 [dependencies]
+int = "^0.1.0"
 num-traits = "^0.2.6"
