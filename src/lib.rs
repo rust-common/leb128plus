@@ -1,12 +1,9 @@
 extern crate int;
-extern crate num_traits;
 
 use int::UInt;
-use num_traits::cast::AsPrimitive;
 
 pub trait Write {
-    fn write<V>(&mut self, v: V) -> std::io::Result<&mut Self>
-        where V: UInt, u8: AsPrimitive<V>;
+    fn write<V: UInt>(&mut self, v: V) -> std::io::Result<&mut Self>;
 }
 
 /// Write the given unsigned integer in the LEB128+ format to `std::io::Write` stream.
@@ -41,9 +38,7 @@ pub trait Write {
 /// );
 /// ```
 impl<T: std::io::Write> Write for T {
-    fn write<V>(&mut self, mut v: V) -> std::io::Result<&mut Self>
-        where V: UInt, u8: num_traits::cast::AsPrimitive<V>
-    {
+    fn write<V: UInt>(&mut self, mut v: V) -> std::io::Result<&mut Self> {
         loop {
             let x = v.as_();
             v >>= 7;
@@ -58,8 +53,7 @@ impl<T: std::io::Write> Write for T {
 }
 
 pub trait Read {
-    fn read<V>(&mut self) -> std::io::Result<V>
-        where V: UInt, u8: num_traits::cast::AsPrimitive<V>;
+    fn read<V: UInt>(&mut self) -> std::io::Result<V>;
 }
 
 /// Read an unsigned integer in the LEB128+ format from `std::io::Read` stream.
@@ -91,9 +85,7 @@ pub trait Read {
 /// });
 /// ```
 impl<T: std::io::Read> Read for T {
-    fn read<V>(&mut self) -> std::io::Result<V>
-        where V: UInt, u8: num_traits::cast::AsPrimitive<V>
-    {
+    fn read<V: UInt>(&mut self) -> std::io::Result<V> {
         let mut result = V::_0;
         let mut shift = 0;
         loop {
@@ -102,7 +94,7 @@ impl<T: std::io::Read> Read for T {
                 self.read_exact(&mut buf)?;
                 buf[0]
             };
-            result += x.as_() << shift;
+            result += V::from_u8(x) << shift;
             if x < 128 {
                 break Ok(result);
             }

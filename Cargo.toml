@@ -1,11 +1,10 @@
 [package]
 name = "leb128plus"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Sergey Shandar"]
 description = "LEB128+"
 license = "Apache-2.0"
 repository = "https://github.com/rust-common/leb128plus"
 
 [dependencies]
-int = "^0.1.0"
-num-traits = "^0.2.6"
+int = "^0.2.0"
