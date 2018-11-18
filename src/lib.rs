@@ -3,7 +3,7 @@ extern crate int;
 use int::UInt;
 
 pub trait Write {
-    fn write<V: UInt>(&mut self, v: V) -> std::io::Result<&mut Self>;
+    fn write<V: UInt>(&mut self, v: V) -> std::io::Result<()>;
 }
 
 /// Write the given unsigned integer in the LEB128+ format to `std::io::Write` stream.
@@ -14,14 +14,16 @@ pub trait Write {
 /// let f = || -> std::io::Result<Vec<u8>> {
 ///     let mut v = vec![];
 ///     use leb128plus::Write;
-///     std::io::Cursor::new(&mut v)
-///         .write(0_u8)?
-///         .write(127_u16)?
-///         .write(128_u32)?
-///         .write(0xFF_u64)?
-///         .write(0x17F_u128)?
-///         .write(0x407F_u16)?
-///         .write(0x4080_u32)?;
+///     {
+///         let mut c = std::io::Cursor::new(&mut v);
+///         c.write(0_u8)?;
+///         c.write(127_u16)?;
+///         c.write(128_u32)?;
+///         c.write(0xFF_u64)?;
+///         c.write(0x17F_u128)?;
+///         c.write(0x407F_u16)?;
+///         c.write(0x4080_u32)?;
+///     }
 ///     Ok(v)
 /// };
 /// assert_eq!(
@@ -38,13 +40,13 @@ pub trait Write {
 /// );
 /// ```
 impl<T: std::io::Write> Write for T {
-    fn write<V: UInt>(&mut self, mut v: V) -> std::io::Result<&mut Self> {
+    fn write<V: UInt>(&mut self, mut v: V) -> std::io::Result<()> {
         loop {
             let x = v.as_();
             v >>= 7;
             if v == V::_0 {
                 self.write(&[x])?;
-                break Ok(self);
+                break Ok(());
             }
             self.write(&[0x80 | x])?;
             v -= V::_1;
