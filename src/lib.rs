@@ -87,7 +87,7 @@ pub trait Read {
 impl<T: std::io::Read> Read for T {
     fn read<V: UInt>(&mut self) -> std::io::Result<V> {
         let mut result = V::_0;
-        let mut shift = 0;
+        let mut shift = 0_u8;
         loop {
             let x = {
                 let mut buf = [0];
