@@ -1,22 +1,44 @@
 extern crate num_traits;
 
-use num_traits::sign::Unsigned;
-use num_traits::int::PrimInt;
 use num_traits::cast::AsPrimitive;
+
+pub trait UInt where
+    Self: AsPrimitive<u8> +
+        Eq +
+        std::ops::SubAssign<Self> +
+        std::ops::AddAssign +
+        std::ops::Shl<u8, Output = Self> +
+        std::ops::ShrAssign<u8>,
+    u8: AsPrimitive<Self>
+{
+    const _0: Self;
+    const _1: Self;
+}
+
+impl UInt for u8 {
+    const _0: u8 = 0;
+    const _1: u8 = 1;
+}
+impl UInt for u16 {
+    const _0: u16 = 0;
+    const _1: u16 = 1;
+}
+impl UInt for u32 {
+    const _0: u32 = 0;
+    const _1: u32 = 1;
+}
+impl UInt for u64 {
+    const _0: u64 = 0;
+    const _1: u64 = 1;
+}
+impl UInt for u128 {
+    const _0: u128 = 0;
+    const _1: u128 = 1;
+}
 
 pub trait Write {
     fn write<V>(&mut self, v: V) -> std::io::Result<&mut Self>
-        where V: Unsigned + PrimInt + AsPrimitive<u8>;
-
-    fn write_u8(&mut self, v: u8) -> std::io::Result<&mut Self> { self.write(v) }
-
-    fn write_u16(&mut self, v: u16) -> std::io::Result<&mut Self> { self.write(v) }
-
-    fn write_u32(&mut self, v: u32) -> std::io::Result<&mut Self> { self.write(v) }
-
-    fn write_u64(&mut self, v: u64) -> std::io::Result<&mut Self> { self.write(v) }
-
-    fn write_u128(&mut self, v: u128) -> std::io::Result<&mut Self> { self.write(v) }
+        where V: UInt, u8: AsPrimitive<V>;
 }
 
 /// Write unsigned integer in the LEB128+ format to `std::io::Write` stream.
@@ -28,12 +50,12 @@ pub trait Write {
 ///     let mut v = vec![];
 ///     use leb128plus::Write;
 ///     std::io::Cursor::new(&mut v)
-///         .write_u8(0)?
-///         .write_u16(127)?
-///         .write_u32(128)?
-///         .write_u64(0xFF)?
-///         .write_u128(0x17F)?
-///         .write_u16(0x407F)?
+///         .write(0_u8)?
+///         .write(127_u16)?
+///         .write(128_u32)?
+///         .write(0xFF_u64)?
+///         .write(0x17F_u128)?
+///         .write(0x407F_u16)?
 ///         .write(0x4080_u32)?;
 ///     Ok(v)
 /// };
@@ -52,29 +74,24 @@ pub trait Write {
 /// ```
 impl<T: std::io::Write> Write for T {
     fn write<V>(&mut self, mut v: V) -> std::io::Result<&mut Self>
-        where V: Unsigned + PrimInt + AsPrimitive<u8>
+        where V: UInt, u8: num_traits::cast::AsPrimitive<V>
     {
         loop {
             let x = v.as_();
-            v = v >> 7;
-            if v.is_zero() {
+            v >>= 7;
+            if v == V::_0 {
                 self.write(&[x])?;
                 break Ok(self);
             }
             self.write(&[0x80 | x])?;
-            v = v - V::one();
+            v -= V::_1;
         }
     }
 }
 
 pub trait Read {
     fn read<V>(&mut self) -> std::io::Result<V>
-        where V: 'static + PrimInt + Unsigned, u8: AsPrimitive<V>;
-    fn read_u8(&mut self) -> std::io::Result<u8> { self.read() }
-    fn read_u16(&mut self) -> std::io::Result<u16> { self.read() }
-    fn read_u32(&mut self) -> std::io::Result<u32> { self.read() }
-    fn read_u64(&mut self) -> std::io::Result<u64> { self.read() }
-    fn read_u128(&mut self) -> std::io::Result<u128> { self.read() }
+        where V: UInt, u8: num_traits::cast::AsPrimitive<V>;
 }
 
 /// Read `u64` in the LEB128+ format from `std::io::Read` stream.
@@ -93,31 +110,32 @@ pub trait Read {
 ///     128,
 /// ]);
 /// use leb128plus::Read;
-/// assert_eq!(c.read_u8().unwrap(), 0);
-/// assert_eq!(c.read_u16().unwrap(), 127);
-/// assert_eq!(c.read_u32().unwrap(), 128);
-/// assert_eq!(c.read_u64().unwrap(), 0xFF);
-/// assert_eq!(c.read_u128().unwrap(), 0x17F);
-/// assert_eq!(c.read_u16().unwrap(), 0x407F);
-/// assert_eq!(c.read_u32().unwrap(), 0x4080);
-/// assert!(match c.read_u64() {
+/// assert_eq!(c.read::<u8>().unwrap(), 0);
+/// assert_eq!(c.read::<u16>().unwrap(), 127);
+/// assert_eq!(c.read::<u32>().unwrap(), 128);
+/// assert_eq!(c.read::<u64>().unwrap(), 0xFF);
+/// assert_eq!(c.read::<u128>().unwrap(), 0x17F);
+/// assert_eq!(c.read::<u16>().unwrap(), 0x407F);
+/// assert_eq!(c.read::<u32>().unwrap(), 0x4080);
+/// assert!(match c.read::<u64>() {
 ///     Result::Err(_) => true,
 ///     _ => false
 /// });
 /// ```
 impl<T: std::io::Read> Read for T {
     fn read<V>(&mut self) -> std::io::Result<V>
-        where
-            V: 'static + PrimInt + Unsigned,
-            u8: AsPrimitive<V>
+        where V: UInt, u8: num_traits::cast::AsPrimitive<V>
     {
-        let mut result: V = V::zero();
+        let mut result = V::_0;
         let mut shift = 0;
         loop {
-            let mut v = [0];
-            self.read_exact(&mut v)?;
-            result = result + ((v[0].as_()) << shift);
-            if v[0] < 128 {
+            let x = {
+                let mut buf = [0];
+                self.read_exact(&mut buf)?;
+                buf[0]
+            };
+            result += x.as_() << shift;
+            if x < 128 {
                 break Ok(result);
             }
             shift += 7;
